@@ -1,0 +1,59 @@
+# XcodeGen 설정 파일
+# 사용법: brew install xcodegen  →  이 폴더에서 `xcodegen generate`  →  KeywordAlarm.xcodeproj 열기
+name: KeywordAlarm
+options:
+  bundleIdPrefix: com.gijeong
+  deploymentTarget:
+    iOS: "26.0"
+  developmentLanguage: ko
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""   # Xcode > Signing & Capabilities에서 본인 팀 선택
+targets:
+  KeywordAlarm:
+    type: application
+    platform: iOS
+    sources:
+      - path: KeywordAlarm
+        excludes:
+          - PrivacyInfo.xcprivacy
+      - path: KeywordAlarm/PrivacyInfo.xcprivacy
+        buildPhase: resources   # 개인정보 매니페스트 (앱스토어 제출 필수)
+    info:
+      path: KeywordAlarm/Info.plist
+      properties:
+        CFBundleDisplayName: 키워드알람
+        CFBundleDevelopmentRegion: ko
+        NSAlarmKitUsageDescription: 등록한 키워드가 담긴 문자가 오면 무음 모드에서도 알람을 울리기 위해 사용합니다.
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gijeong.keywordalarm
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+  KeywordAlarmTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: KeywordAlarmTests
+    dependencies:
+      - target: KeywordAlarm
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  KeywordAlarm:
+    build:
+      targets:
+        KeywordAlarm: all
+    test:
+      targets:
+        - KeywordAlarmTests
