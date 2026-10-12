@@ -6,6 +6,9 @@ import Foundation
 /// - 최저임금: 시간당 10,320원
 /// - 연장근로: 하루 8시간 초과분 + 추가 연장시간 → 시급 × 1.5
 /// - 야간근로: 22:00~06:00 근무시간 → 시급 × 0.5 가산
+/// - 휴일근로(공휴일·대체공휴일·근로자의 날): 8시간까지 × 0.5 가산(1.5배), 8시간 초과분 × 1.0 가산(2배)
+///     · 5인 이상 사업장 기준 (근로기준법 제56조, 2022년부터 공휴일 유급휴일 적용)
+///     · 자정을 넘기는 근무는 공휴일 날짜에 걸친 시간만 계산
 /// - 주휴수당: 주(일~토) 단위. 금액 = min(주 근무시간, 40) ÷ 40 × 8 × 평균시급
 ///     · 법 기준: 주 15시간 이상 (근로기준법)
 ///     · 회사 기준: 주 N일 이상 (쿠팡 공지 '일~토 기준 주 5일'. 고용노동부가 2025.11 개선 명령)
@@ -15,6 +18,8 @@ enum PayRates {
     static let minimumWage2026 = 10_320
     static let overtimeMultiplier = 1.5
     static let nightPremium = 0.5
+    static let holidayPremium = 0.5        // 공휴일 근무 8시간까지 +50% (= 1.5배)
+    static let holidayOver8Premium = 1.0   // 공휴일 8시간 초과분 +100% (연장 1.5배에 +0.5 더해 2배)
     static let employmentInsurance = 0.009
     static let nationalPension = 0.0475
     static let healthInsurance = 0.03595
@@ -34,8 +39,11 @@ struct DayPay: Equatable {
     var overtime: Int
     var night: Int
     var incentive: Int
+    var holidayHours: Double = 0   // 공휴일에 걸친 실근무 시간
+    var holidayWork: Int = 0       // 휴일근로 가산 금액
 
-    var total: Int { base + overtime + night + incentive }
+    var total: Int { base + overtime + night + incentive + holidayWork }
+    var isHolidayPremium: Bool { holidayWork > 0 }
 }
 
 struct WeekSummary: Identifiable, Equatable {
@@ -80,6 +88,7 @@ struct MonthSummary: Equatable {
     var overtime: Int
     var night: Int
     var incentive: Int
+    var holidayWork: Int
     var holidayPay: Int
     var bonuses: [BonusProgress]
     var bonusTotal: Int
@@ -88,7 +97,7 @@ struct MonthSummary: Equatable {
     var daysToInsurance: Int
     var deductions: Deductions
 
-    var gross: Int { base + overtime + night + incentive + holidayPay + bonusTotal }
+    var gross: Int { base + overtime + night + incentive + holidayWork + holidayPay + bonusTotal }
     var net: Int { gross - deductions.total }
 }
 
@@ -96,7 +105,7 @@ enum PayCalculator {
 
     // MARK: 하루
 
-    static func dayPay(_ r: WorkRecord) -> DayPay {
+    static func dayPay(_ r: WorkRecord, holidayPremium: Bool = true) -> DayPay {
         let span = spanMinutes(start: r.startMinute, end: r.endMinute)
         let worked = max(0, Double(span - r.breakMinutes)) / 60
         let wage = Double(r.hourlyWage)
@@ -121,8 +130,36 @@ enum PayCalculator {
         let paidOT = r.dailyPayOverride != nil ? max(0, r.overtimeHours) : otHours
         let overtime = Int((paidOT * wage * PayRates.overtimeMultiplier).rounded())
 
+        // 휴일근로: 공휴일 날짜(0~24시)에 걸친 시간만. 다음 날도 공휴일이면 그 부분도 포함
+        var holidayHours = 0.0
+        var holidayWork = 0
+        if holidayPremium && r.holidayPremiumOff != true && span > 0 {
+            var minutes = 0
+            if Holidays.isHoliday(r.day) {
+                minutes += max(0, min(r.startMinute + span, 1440) - r.startMinute)
+            }
+            if r.startMinute + span > 1440 && Holidays.isHoliday(r.day.adding(days: 1)) {
+                minutes += r.startMinute + span - 1440
+            }
+            holidayHours = Double(minutes) / 60 * (worked * 60 / Double(span))   // 휴게 비율만큼 차감
+            if holidayHours > 0 {
+                if let override = r.dailyPayOverride, worked > 0 {
+                    // 일급 직접 입력: 일급을 시간당으로 나눠 공휴일 시간만큼 50% 가산
+                    let hourly = Double(override) / min(worked, 8)
+                    holidayWork = Int((min(holidayHours, 8) * hourly * PayRates.holidayPremium).rounded())
+                } else {
+                    let within = min(holidayHours, 8)
+                    let over = max(0, holidayHours - 8)
+                    holidayWork = Int((within * wage * PayRates.holidayPremium
+                                       + over * wage * (PayRates.holidayOver8Premium - (PayRates.overtimeMultiplier - 1)))
+                                      .rounded())
+                }
+            }
+        }
+
         return DayPay(workedHours: worked, regularHours: regular, overtimeHours: paidOT, nightHours: nightHours,
-                      base: base, overtime: overtime, night: night, incentive: max(0, r.incentive))
+                      base: base, overtime: overtime, night: night, incentive: max(0, r.incentive),
+                      holidayHours: holidayHours, holidayWork: holidayWork)
     }
 
     static func spanMinutes(start: Int, end: Int) -> Int {
@@ -150,7 +187,7 @@ enum PayCalculator {
         let end = start.adding(days: 6, calendar: calendar)
         let inWeek = records.filter { $0.day >= start && $0.day <= end }
         let days = Set(inWeek.map(\.day)).count
-        let pays = inWeek.map(dayPay)
+        let pays = inWeek.map { dayPay($0, holidayPremium: settings.applyHolidayPremium) }
         let regularHours = pays.map(\.regularHours).reduce(0, +)
         let wageHours = zip(inWeek, pays).map { Double($0.hourlyWage) * $1.regularHours }.reduce(0, +)
         let avgWage = regularHours > 0 ? wageHours / regularHours : Double(settings.defaultHourlyWage)
@@ -174,7 +211,7 @@ enum PayCalculator {
     static func monthSummary(year: Int, month: Int, records: [WorkRecord], settings: PaySettings,
                              calendar: Calendar = .current) -> MonthSummary {
         let inMonth = records.filter { $0.day.year == year && $0.day.month == month }
-        let pays = inMonth.map(dayPay)
+        let pays = inMonth.map { dayPay($0, holidayPremium: settings.applyHolidayPremium) }
         let workDays = Set(inMonth.map(\.day)).count
         // 총 근무시간 = 실근무 + 추가 연장
         let totalHours = zip(inMonth, pays).map { $1.workedHours + max(0, $0.overtimeHours) }.reduce(0, +)
@@ -201,7 +238,8 @@ enum PayCalculator {
         let ot = pays.map(\.overtime).reduce(0, +)
         let night = pays.map(\.night).reduce(0, +)
         let incentive = pays.map(\.incentive).reduce(0, +)
-        let gross = base + ot + night + incentive + holiday + bonusTotal
+        let holidayWork = pays.map(\.holidayWork).reduce(0, +)
+        let gross = base + ot + night + incentive + holidayWork + holiday + bonusTotal
 
         let insurance = workDays >= settings.insuranceMinDays || totalHours >= settings.insuranceMinHours
         var d = Deductions()
@@ -220,7 +258,7 @@ enum PayCalculator {
         }
 
         return MonthSummary(year: year, month: month, workDays: workDays, totalHours: totalHours,
-                            base: base, overtime: ot, night: night, incentive: incentive,
+                            base: base, overtime: ot, night: night, incentive: incentive, holidayWork: holidayWork,
                             holidayPay: holiday, bonuses: bonuses, bonusTotal: bonusTotal, weeks: weeks,
                             insuranceLikely: insurance,
                             daysToInsurance: max(0, settings.insuranceMinDays - workDays),

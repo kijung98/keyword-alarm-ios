@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 
 /// 근무 기록 탭: 달력 · 이번 주 주휴 진행 · 월간 수입 요약
 struct WorkView: View {
@@ -26,9 +27,19 @@ struct WorkView: View {
                                      settings: model.paySettings)
                     }
 
-                    CalendarCard(month: month, records: model.workRecords) { day in
+                    CalendarCard(month: month, records: model.workRecords,
+                                 holidayPremium: model.paySettings.applyHolidayPremium) { day in
                         editing = model.records(on: day).first ?? model.paySettings.newRecord(on: day)
                     }
+
+                    if model.paySettings.applyHolidayPremium {
+                        UpcomingHolidayCard(settings: model.paySettings, records: model.workRecords) { day in
+                            editing = model.records(on: day).first ?? model.paySettings.newRecord(on: day)
+                        }
+                    }
+
+                    YearChartCard(year: month.year, records: model.workRecords,
+                                  settings: model.paySettings, month: $month)
 
                     MilestonesCard(summary: summary, settings: model.paySettings)
 
@@ -228,57 +239,315 @@ private struct ThisWeekCard: View {
 private struct CalendarCard: View {
     let month: DayKey
     let records: [WorkRecord]
+    var holidayPremium: Bool = true
     let onTap: (DayKey) -> Void
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
     private let weekdays = ["일", "월", "화", "수", "목", "금", "토"]
 
-    var body: some View {
+    /// 달력 칸을 주(行) 단위로: 앞뒤 빈칸은 nil
+    private var rows: [[DayKey?]] {
         let first = DayKey(year: month.year, month: month.month, day: 1)
         let leading = first.weekday() - 1
         let count = Calendar.current.range(of: .day, in: .month, for: first.date())?.count ?? 30
+        var cells: [DayKey?] = Array(repeating: nil, count: leading)
+        cells += (1...count).map { DayKey(year: month.year, month: month.month, day: $0) }
+        while cells.count % 7 != 0 { cells.append(nil) }
+        return stride(from: 0, to: cells.count, by: 7).map { Array(cells[$0..<$0 + 7]) }
+    }
+
+    var body: some View {
         let today = DayKey(Date())
         let byDay = Dictionary(grouping: records.filter { $0.day.year == month.year && $0.day.month == month.month },
                                by: \.day)
 
         WorkCard(title: "달력 · 날짜를 눌러 근무 입력") {
-            LazyVGrid(columns: columns, spacing: 6) {
-                ForEach(0..<7, id: \.self) { i in
-                    Text(weekdays[i])
-                        .font(.caption.bold())
-                        .foregroundStyle(i == 0 ? Color.red : (i == 6 ? Color.blue : Color.secondary))
+            VStack(spacing: 6) {
+                // 요일 머리글
+                HStack(spacing: 4) {
+                    ForEach(0..<7, id: \.self) { i in
+                        Text(weekdays[i])
+                            .font(.caption.bold())
+                            .foregroundStyle(Self.weekdayColor(i + 1, holiday: false))
+                            .frame(maxWidth: .infinity)
+                    }
                 }
-                ForEach(0..<leading, id: \.self) { _ in Color.clear.frame(height: 52) }
-                ForEach(1...count, id: \.self) { d in
-                    let day = DayKey(year: month.year, month: month.month, day: d)
-                    let dayRecords = byDay[day] ?? []
-                    let total = dayRecords.map { PayCalculator.dayPay($0).total }.reduce(0, +)
-                    Button { onTap(day) } label: {
-                        VStack(spacing: 2) {
-                            Text("\(d)")
-                                .font(.subheadline.weight(day == today ? .heavy : .regular))
-                                .foregroundStyle(dayRecords.isEmpty ? Color.primary : Color.white)
-                            if !dayRecords.isEmpty {
-                                Text(PayCalculator.shortWon(total))
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundStyle(.white)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.6)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 52)
-                        .background(dayRecords.isEmpty ? Color.clear : Color.blue,
-                                    in: RoundedRectangle(cornerRadius: 10))
-                        .overlay {
-                            if day == today {
-                                RoundedRectangle(cornerRadius: 10).stroke(Color.blue, lineWidth: 2)
+                .padding(.bottom, 2)
+                Divider()
+
+                // 날짜
+                ForEach(Array(rows.enumerated()), id: \.offset) { _, week in
+                    HStack(spacing: 4) {
+                        ForEach(0..<7, id: \.self) { col in
+                            if let day = week[col] {
+                                DayCell(day: day,
+                                        records: byDay[day] ?? [],
+                                        isToday: day == today,
+                                        holidayPremium: holidayPremium,
+                                        onTap: onTap)
+                            } else {
+                                Color.clear.frame(maxWidth: .infinity, minHeight: 56)
                             }
                         }
                     }
-                    .buttonStyle(.plain)
+                }
+
+                // 범례
+                HStack(spacing: 14) {
+                    Legend(color: .blue, text: "근무")
+                    Legend(color: .red, text: "일요일·공휴일")
+                    Legend(color: Color(red: 0.15, green: 0.4, blue: 0.95), text: "토요일", textOnly: true)
+                    if holidayPremium {
+                        HStack(spacing: 4) {
+                            PremiumBadge()
+                            Text("1.5배").font(.caption2).foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(.top, 4)
+            }
+        }
+    }
+
+    /// 1=일(빨강), 7=토(파랑), 공휴일(빨강)
+    static func weekdayColor(_ weekday: Int, holiday: Bool) -> Color {
+        if holiday || weekday == 1 { return .red }
+        if weekday == 7 { return Color(red: 0.15, green: 0.4, blue: 0.95) }
+        return .primary
+    }
+
+    private struct DayCell: View {
+        let day: DayKey
+        let records: [WorkRecord]
+        let isToday: Bool
+        var holidayPremium: Bool = true
+        let onTap: (DayKey) -> Void
+
+        var body: some View {
+            let holiday = Holidays.name(of: day)
+            let worked = !records.isEmpty
+            let total = records.map { PayCalculator.dayPay($0, holidayPremium: holidayPremium).total }.reduce(0, +)
+
+            Button { onTap(day) } label: {
+                VStack(spacing: 1) {
+                    Text("\(day.day)")
+                        .font(.subheadline.weight(isToday ? .heavy : .semibold))
+                        .foregroundStyle(worked ? Color.white
+                                         : CalendarCard.weekdayColor(day.weekday(), holiday: holiday != nil))
+                    if worked {
+                        Text(PayCalculator.shortWon(total))
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                    } else if let holiday {
+                        Text(holiday)
+                            .font(.system(size: 8, weight: .medium))
+                            .foregroundStyle(.red)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .background(worked ? Color.blue : (holiday != nil ? Color.red.opacity(0.07) : Color.clear),
+                            in: RoundedRectangle(cornerRadius: 10))
+                .overlay {
+                    if isToday {
+                        RoundedRectangle(cornerRadius: 10).stroke(worked ? Color.orange : Color.blue, lineWidth: 2)
+                    }
+                }
+                .overlay(alignment: .topTrailing) {
+                    if holiday != nil && holidayPremium {
+                        PremiumBadge().offset(x: 3, y: -4)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private struct Legend: View {
+        let color: Color
+        let text: String
+        var textOnly = false
+        var body: some View {
+            HStack(spacing: 4) {
+                if !textOnly { RoundedRectangle(cornerRadius: 3).fill(color).frame(width: 10, height: 10) }
+                Text(text).font(.caption2).foregroundStyle(textOnly ? color : .secondary)
+            }
+        }
+    }
+}
+
+
+
+// MARK: - 공휴일 1.5배 배지
+
+struct PremiumBadge: View {
+    var body: some View {
+        Text("×1.5")
+            .font(.system(size: 8, weight: .heavy, design: .rounded))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 3).padding(.vertical, 1)
+            .background(LinearGradient(colors: [.orange, .red], startPoint: .top, endPoint: .bottom),
+                        in: Capsule())
+    }
+}
+
+// MARK: - 다가오는 1.5배 날
+
+private struct UpcomingHolidayCard: View {
+    let settings: PaySettings
+    let records: [WorkRecord]
+    let onTap: (DayKey) -> Void
+
+    var body: some View {
+        let today = DayKey(Date())
+        let upcoming: [(day: DayKey, name: String)] = (0...45).compactMap { offset in
+            let d = today.adding(days: offset)
+            return Holidays.name(of: d).map { (d, $0) }
+        }
+        let extra = Int((8 * Double(settings.defaultHourlyWage) * PayRates.holidayPremium).rounded())
+
+        if !upcoming.isEmpty {
+            WorkCard(title: "다가오는 1.5배 날 (공휴일)") {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(upcoming.prefix(4), id: \.day) { item in
+                        let offset = Calendar.current.dateComponents([.day], from: today.date(), to: item.day.date()).day ?? 0
+                        let booked = records.contains { $0.day == item.day }
+                        Button { onTap(item.day) } label: {
+                            HStack(spacing: 12) {
+                                Text(offset == 0 ? "오늘" : "D-\(offset)")
+                                    .font(.subheadline.weight(.heavy))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 58, height: 34)
+                                    .background(offset <= 3 ? Color.red : Color.orange, in: RoundedRectangle(cornerRadius: 10))
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("\(item.day.month)/\(item.day.day) \(item.name)").font(.subheadline.bold())
+                                    Text(booked ? "근무 등록됨 ✅" : "8시간 근무 시 약 +\(IncentiveOffer.won(extra))원 더")
+                                        .font(.caption)
+                                        .foregroundStyle(booked ? Color.green : Color.secondary)
+                                }
+                                Spacer()
+                                PremiumBadge().scaleEffect(1.6)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    Label("공휴일은 1.5배라 지원자가 몰려요. 근무 신청은 며칠 전에 미리 해 두세요!",
+                          systemImage: "exclamationmark.bubble.fill")
+                        .font(.footnote.bold())
+                        .foregroundStyle(.orange)
                 }
             }
         }
+    }
+}
+
+// MARK: - 1년 월별 수입 그래프
+
+private struct YearChartCard: View {
+    let year: Int
+    let records: [WorkRecord]
+    let settings: PaySettings
+    @Binding var month: DayKey
+
+    @State private var grown = false
+    @State private var selected: String?
+
+    private struct Point: Identifiable {
+        let month: Int
+        let gross: Int
+        let days: Int
+        var id: Int { month }
+        var label: String { "\(month)월" }
+    }
+
+    var body: some View {
+        let points = (1...12).map { m -> Point in
+            let s = PayCalculator.monthSummary(year: year, month: m, records: records, settings: settings)
+            return Point(month: m, gross: s.gross, days: s.workDays)
+        }
+        let total = points.map(\.gross).reduce(0, +)
+        let worked = points.filter { $0.gross > 0 }
+        let best = worked.max { $0.gross < $1.gross }
+        let average = worked.isEmpty ? 0 : total / worked.count
+        let totalDays = points.map(\.days).reduce(0, +)
+
+        WorkCard(title: "\(String(year))년 월별 수입") {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 0) {
+                    stat("올해 합계", PayCalculator.shortWon(total) + "원")
+                    stat("최고의 달", best.map { "\($0.month)월" } ?? "-")
+                    stat("월평균", PayCalculator.shortWon(average) + "원")
+                    stat("총 근무", "\(totalDays)일")
+                }
+
+                if total == 0 {
+                    Text("근무를 기록하면 달마다 막대가 올라가요 📈")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 120)
+                } else {
+                    Chart(points) { p in
+                        BarMark(x: .value("월", p.label),
+                                y: .value("수입", grown ? p.gross : 0))
+                            .cornerRadius(6)
+                            .foregroundStyle(barStyle(p, best: best))
+                            .annotation(position: .top, spacing: 2) {
+                                if p.id == best?.id && grown {
+                                    Text("👑 " + PayCalculator.shortWon(p.gross))
+                                        .font(.caption2.bold())
+                                        .foregroundStyle(Color.orange)
+                                }
+                            }
+                    }
+                    .chartXSelection(value: $selected)
+                    .chartYAxis {
+                        AxisMarks(position: .leading) { value in
+                            AxisGridLine()
+                            AxisValueLabel {
+                                if let v = value.as(Int.self) { Text(PayCalculator.shortWon(v)) }
+                            }
+                        }
+                    }
+                    .frame(height: 210)
+                    .onChange(of: selected) { _, newValue in
+                        if let newValue, let m = Int(newValue.replacingOccurrences(of: "월", with: "")) {
+                            withAnimation { month = DayKey(year: year, month: m, day: 1) }
+                        }
+                    }
+
+                    Text("막대를 누르면 그 달로 이동해요 · 금색 막대가 가장 많이 번 달")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .onAppear {
+            grown = false
+            withAnimation(.spring(response: 0.9, dampingFraction: 0.75).delay(0.15)) { grown = true }
+        }
+        .onChange(of: year) { _, _ in
+            grown = false
+            withAnimation(.spring(response: 0.9, dampingFraction: 0.75)) { grown = true }
+        }
+    }
+
+    private func barStyle(_ p: Point, best: Point?) -> AnyShapeStyle {
+        if p.id == best?.id && p.gross > 0 {
+            return AnyShapeStyle(LinearGradient(colors: [Color(red: 1, green: 0.85, blue: 0.35), .orange],
+                                                startPoint: .top, endPoint: .bottom))
+        }
+        if p.month == month.month { return AnyShapeStyle(Color.blue) }
+        return AnyShapeStyle(Color.blue.opacity(0.4))
+    }
+
+    private func stat(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(.caption).foregroundStyle(.secondary)
+            Text(value).font(.subheadline.bold()).lineLimit(1).minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -380,6 +649,7 @@ private struct BreakdownCard: View {
                 Row("연장수당", summary.overtime)
                 Row("야간수당", summary.night)
                 Row("인센티브", summary.incentive)
+                Row("휴일수당 (공휴일 1.5배)", summary.holidayWork)
                 Row("주휴수당", summary.holidayPay)
                 Row("근무일수 보너스", summary.bonusTotal)
                 Divider()

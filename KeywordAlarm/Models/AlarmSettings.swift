@@ -33,6 +33,11 @@ struct AlarmSettings: Codable, Equatable {
     /// 적용일자가 모두 지난 날짜면 울리지 않기
     var skipPastDates: Bool = true
 
+    /// 날씨 지역 이름 (WeatherRegion.all 중 하나)
+    var weatherRegion: String = "인천"
+    /// 날씨 표시 일수 (3 또는 7)
+    var weatherDays: Int = 3
+
     init() {}
 
     /// 설정 항목이 늘어나도 예전 저장값을 잃지 않도록, 없는 항목은 기본값으로 채운다.
@@ -51,6 +56,8 @@ struct AlarmSettings: Codable, Equatable {
         preferredCenters = try c.decodeIfPresent([String].self, forKey: .preferredCenters) ?? d.preferredCenters
         onlyPreferredCenters = try c.decodeIfPresent(Bool.self, forKey: .onlyPreferredCenters) ?? d.onlyPreferredCenters
         skipPastDates = try c.decodeIfPresent(Bool.self, forKey: .skipPastDates) ?? d.skipPastDates
+        weatherRegion = try c.decodeIfPresent(String.self, forKey: .weatherRegion) ?? d.weatherRegion
+        weatherDays = try c.decodeIfPresent(Int.self, forKey: .weatherDays) ?? d.weatherDays
     }
 
     /// 센터 이름 비교용: "인천 14센터" → "인천14", "인천 17 신선센터" → "인천17"

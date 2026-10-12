@@ -61,6 +61,8 @@ struct WorkRecord: Codable, Identifiable, Equatable {
     /// 인센티브·특별지급 금액
     var incentive: Int = 0
     var memo: String = ""
+    /// 공휴일 1.5배를 이 날만 끄고 싶을 때 true (기본 nil = 공휴일이면 자동 적용)
+    var holidayPremiumOff: Bool? = nil
 }
 
 /// 월 근무일수 보너스 규칙 (예: 월 15일 이상 근무 시 +100,000원)
@@ -69,6 +71,68 @@ struct MonthlyBonusRule: Codable, Identifiable, Equatable {
     var name: String
     var minDays: Int
     var amount: Int
+}
+
+/// 근무조 (예: 오후조 = Night). 근무 입력에서 근무조를 고르고 → 시간대를 고른다.
+struct ShiftGroup: Codable, Identifiable, Equatable, Hashable {
+    var name: String          // 근무 기록에 저장되는 이름 (문자의 '오후조' 등과 맞춤)
+    var english: String = ""  // 센터 표기 (Day, Night ...)
+    var id: String { name }
+
+    var label: String { english.isEmpty ? name : "\(name) \(english)" }
+
+    static let defaults: [ShiftGroup] = [
+        ShiftGroup(name: "주간조", english: "Day"),
+        ShiftGroup(name: "오후조", english: "Night"),
+        ShiftGroup(name: "심야조", english: "Overnight"),
+        ShiftGroup(name: "주간단축", english: "Day short·신선"),
+        ShiftGroup(name: "야간단축", english: "Night short·신선")
+    ]
+}
+
+/// 근무조별 시간대 (버튼 한 번으로 출퇴근·휴게 입력)
+struct ShiftPreset: Codable, Identifiable, Equatable {
+    var id = UUID()
+    var group: String          // ShiftGroup.name
+    var startMinute: Int
+    var endMinute: Int
+    var breakMinutes: Int = 60
+
+    var timeText: String {
+        String(format: "%02d:%02d~%02d:%02d", startMinute / 60, startMinute % 60, endMinute / 60, endMinute % 60)
+    }
+
+    /// 휴게 기본값(추정): 근로기준법상 4시간 이상 근무 30분, 8시간 이상 1시간
+    static func defaultBreak(start: Int, end: Int) -> Int {
+        let span = PayCalculator.spanMinutes(start: start, end: end)
+        if span >= 9 * 60 { return 60 }
+        if span >= 4 * 60 + 30 { return 30 }
+        return 0
+    }
+
+    init(group: String, start: Int, end: Int, breakMinutes: Int? = nil) {
+        self.group = group
+        self.startMinute = start
+        self.endMinute = end
+        self.breakMinutes = breakMinutes ?? ShiftPreset.defaultBreak(start: start, end: end)
+    }
+
+    private static func t(_ h: Int, _ m: Int = 0) -> Int { h * 60 + m }
+
+    /// 물류센터에서 쓰는 시간대 (설정에서 추가·삭제 가능)
+    static let defaults: [ShiftPreset] = [
+        ShiftPreset(group: "주간조", start: t(8), end: t(18)),
+        ShiftPreset(group: "오후조", start: t(18), end: t(4)),
+        ShiftPreset(group: "오후조", start: t(19), end: t(5)),
+        ShiftPreset(group: "오후조", start: t(17), end: t(3)),
+        ShiftPreset(group: "심야조", start: t(20), end: t(6)),
+        ShiftPreset(group: "심야조", start: t(21), end: t(6)),
+        ShiftPreset(group: "심야조", start: t(20), end: t(5)),
+        ShiftPreset(group: "주간단축", start: t(8), end: t(12, 30)),
+        ShiftPreset(group: "주간단축", start: t(8), end: t(11, 30)),
+        ShiftPreset(group: "야간단축", start: t(21), end: t(2, 30)),
+        ShiftPreset(group: "야간단축", start: t(21), end: t(2))
+    ]
 }
 
 /// 주휴수당 판단 기준
@@ -96,10 +160,14 @@ struct PaySettings: Codable, Equatable {
     var holidayRule: HolidayPayRule = .companyDays
     var holidayMinDays: Int = 5                 // 회사 기준 일수 & 축하 기준
 
+    var applyHolidayPremium: Bool = true        // 공휴일 근무 1.5배
     var applyDeductions: Bool = true
     var insuranceMinDays: Int = 8               // 국민연금·건강보험 판단 기준 (월 8일)
     var insuranceMinHours: Double = 60          // 또는 월 60시간
 
+    var centerPresets: [String] = []
+    var shiftGroups: [ShiftGroup] = ShiftGroup.defaults
+    var shiftTimes: [ShiftPreset] = ShiftPreset.defaults
     var monthlyGoal: Int = 0
     var bonusRules: [MonthlyBonusRule] = []
 
@@ -115,11 +183,19 @@ struct PaySettings: Codable, Equatable {
         defaultCenter = try c.decodeIfPresent(String.self, forKey: .defaultCenter) ?? d.defaultCenter
         holidayRule = try c.decodeIfPresent(HolidayPayRule.self, forKey: .holidayRule) ?? d.holidayRule
         holidayMinDays = try c.decodeIfPresent(Int.self, forKey: .holidayMinDays) ?? d.holidayMinDays
+        applyHolidayPremium = try c.decodeIfPresent(Bool.self, forKey: .applyHolidayPremium) ?? d.applyHolidayPremium
         applyDeductions = try c.decodeIfPresent(Bool.self, forKey: .applyDeductions) ?? d.applyDeductions
         insuranceMinDays = try c.decodeIfPresent(Int.self, forKey: .insuranceMinDays) ?? d.insuranceMinDays
         insuranceMinHours = try c.decodeIfPresent(Double.self, forKey: .insuranceMinHours) ?? d.insuranceMinHours
+        centerPresets = try c.decodeIfPresent([String].self, forKey: .centerPresets) ?? d.centerPresets
+        shiftGroups = (try? c.decodeIfPresent([ShiftGroup].self, forKey: .shiftGroups)) ?? d.shiftGroups
+        shiftTimes = (try? c.decodeIfPresent([ShiftPreset].self, forKey: .shiftTimes)) ?? d.shiftTimes
         monthlyGoal = try c.decodeIfPresent(Int.self, forKey: .monthlyGoal) ?? d.monthlyGoal
         bonusRules = try c.decodeIfPresent([MonthlyBonusRule].self, forKey: .bonusRules) ?? d.bonusRules
+    }
+
+    func times(of group: String) -> [ShiftPreset] {
+        shiftTimes.filter { $0.group == group }
     }
 
     func newRecord(on day: DayKey) -> WorkRecord {

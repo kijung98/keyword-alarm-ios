@@ -19,15 +19,19 @@
 		3D3C73BD21A0AD6DDD7EADEB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 72D7D42455EC771D8543B16D /* Assets.xcassets */; };
 		3D74E3C7714F58F8A5298FA7 /* WorkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A224A240DD5C83511B78833A /* WorkView.swift */; };
 		444B495038EAB6C01B7051D9 /* KeywordsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AEE2688F90769EA1F17B39B /* KeywordsView.swift */; };
+		44EF1AAA686BFC32538BF856 /* WeatherStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24D86E8E00A986CE87981B7F /* WeatherStore.swift */; };
 		44EF6E13B40EDE8D83D5029B /* KeywordAlarmApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8577418560989DA43173FB4E /* KeywordAlarmApp.swift */; };
 		4F346025CD38DE20D7D0CFBD /* GuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59B916367280CDED87205D61 /* GuideView.swift */; };
 		5D0B2CE35DADFD0A859F4083 /* KeywordAlarmIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C1089BB38F08380511581B /* KeywordAlarmIntents.swift */; };
+		6F320E6BCB45D717963AB557 /* WeatherCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8CB89DFD5786E345A5EBBB2 /* WeatherCard.swift */; };
 		8EC24FE07493473D3648F07D /* WorkModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389AA868B4614EADE21B8001 /* WorkModels.swift */; };
 		936AB2DA64DE0ACEA0BA3D9B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73282ABBD422BB41F407B296 /* ContentView.swift */; };
 		94F7E5C7E11F0492FB1CC847 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BFE4F01EF7EDBD460CF184F /* HistoryView.swift */; };
 		A1E2C35027953B3CEADCB9DA /* OfferParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B703AB3E450573700BD02BF /* OfferParser.swift */; };
+		CB3162B507D37E58F20D62A0 /* Holidays.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E55BC705F51F4BBECBA6271 /* Holidays.swift */; };
 		CCBD08F5AE4CAA3EFDD2BAC6 /* PayCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 557192C0D9243F1E49F6F38E /* PayCalculatorTests.swift */; };
 		D23FAC1AE3C5CDB47A8564A3 /* WorkEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6138C52D616A1FB0E33A4240 /* WorkEditorView.swift */; };
+		D79463FFA6F86CD05FEC605A /* RadarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 656218AF2F5AD0396B0CCD0E /* RadarView.swift */; };
 		E779B5D34F07F16364B4C29C /* AlarmSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6499C3AAA6C96E3816A5187E /* AlarmSettings.swift */; };
 		EA5579EDE386192B86E6C1E6 /* KeywordMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30AA8F6928F11815D4C17277 /* KeywordMatcher.swift */; };
 /* End PBXBuildFile section */
@@ -46,6 +50,7 @@
 		03C42174158F23F62FEAEC29 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		122FE9D896E0F32C2F92265D /* PayCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayCalculator.swift; sourceTree = "<group>"; };
 		1AEE2688F90769EA1F17B39B /* KeywordsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeywordsView.swift; sourceTree = "<group>"; };
+		24D86E8E00A986CE87981B7F /* WeatherStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherStore.swift; sourceTree = "<group>"; };
 		30AA8F6928F11815D4C17277 /* KeywordMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeywordMatcher.swift; sourceTree = "<group>"; };
 		389AA868B4614EADE21B8001 /* WorkModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkModels.swift; sourceTree = "<group>"; };
 		3B703AB3E450573700BD02BF /* OfferParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferParser.swift; sourceTree = "<group>"; };
@@ -55,9 +60,11 @@
 		60CC6D38A377E648AE39AD6C /* RealMessages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealMessages.swift; sourceTree = "<group>"; };
 		6138C52D616A1FB0E33A4240 /* WorkEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkEditorView.swift; sourceTree = "<group>"; };
 		6499C3AAA6C96E3816A5187E /* AlarmSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmSettings.swift; sourceTree = "<group>"; };
+		656218AF2F5AD0396B0CCD0E /* RadarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadarView.swift; sourceTree = "<group>"; };
 		72D7D42455EC771D8543B16D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		73282ABBD422BB41F407B296 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		79C709E11C046D81A9A2863E /* KeywordMatcherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeywordMatcherTests.swift; sourceTree = "<group>"; };
+		7E55BC705F51F4BBECBA6271 /* Holidays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Holidays.swift; sourceTree = "<group>"; };
 		8577418560989DA43173FB4E /* KeywordAlarmApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeywordAlarmApp.swift; sourceTree = "<group>"; };
 		8BFE4F01EF7EDBD460CF184F /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		A224A240DD5C83511B78833A /* WorkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkView.swift; sourceTree = "<group>"; };
@@ -66,6 +73,7 @@
 		BFF32379A8B69A41D6513AD4 /* HistoryEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryEvent.swift; sourceTree = "<group>"; };
 		C675BBC8197F782237F13E66 /* KeywordAlarm.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KeywordAlarm.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0A6372510B8CD9D5AA21714 /* PaySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaySettingsView.swift; sourceTree = "<group>"; };
+		E8CB89DFD5786E345A5EBBB2 /* WeatherCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherCard.swift; sourceTree = "<group>"; };
 		EACF81C208316BA2442CD754 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F0C1089BB38F08380511581B /* KeywordAlarmIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeywordAlarmIntents.swift; sourceTree = "<group>"; };
 		F3A5D73A9785FB7C4D421653 /* AlarmService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmService.swift; sourceTree = "<group>"; };
@@ -104,9 +112,11 @@
 			isa = PBXGroup;
 			children = (
 				F3A5D73A9785FB7C4D421653 /* AlarmService.swift */,
+				7E55BC705F51F4BBECBA6271 /* Holidays.swift */,
 				30AA8F6928F11815D4C17277 /* KeywordMatcher.swift */,
 				3B703AB3E450573700BD02BF /* OfferParser.swift */,
 				122FE9D896E0F32C2F92265D /* PayCalculator.swift */,
+				24D86E8E00A986CE87981B7F /* WeatherStore.swift */,
 			);
 			path = Logic;
 			sourceTree = "<group>";
@@ -129,6 +139,8 @@
 				1AEE2688F90769EA1F17B39B /* KeywordsView.swift */,
 				B4593881359BF6E97C382AD7 /* OfferDetailView.swift */,
 				D0A6372510B8CD9D5AA21714 /* PaySettingsView.swift */,
+				656218AF2F5AD0396B0CCD0E /* RadarView.swift */,
+				E8CB89DFD5786E345A5EBBB2 /* WeatherCard.swift */,
 				6138C52D616A1FB0E33A4240 /* WorkEditorView.swift */,
 				A224A240DD5C83511B78833A /* WorkView.swift */,
 			);
@@ -268,6 +280,7 @@
 				4F346025CD38DE20D7D0CFBD /* GuideView.swift in Sources */,
 				128A846A997F7ECF10F86FA1 /* HistoryEvent.swift in Sources */,
 				94F7E5C7E11F0492FB1CC847 /* HistoryView.swift in Sources */,
+				CB3162B507D37E58F20D62A0 /* Holidays.swift in Sources */,
 				44EF6E13B40EDE8D83D5029B /* KeywordAlarmApp.swift in Sources */,
 				5D0B2CE35DADFD0A859F4083 /* KeywordAlarmIntents.swift in Sources */,
 				EA5579EDE386192B86E6C1E6 /* KeywordMatcher.swift in Sources */,
@@ -276,6 +289,9 @@
 				A1E2C35027953B3CEADCB9DA /* OfferParser.swift in Sources */,
 				1B5F79EF48FE48B0DE5D6560 /* PayCalculator.swift in Sources */,
 				179956E349765A2FFAED9B70 /* PaySettingsView.swift in Sources */,
+				D79463FFA6F86CD05FEC605A /* RadarView.swift in Sources */,
+				6F320E6BCB45D717963AB557 /* WeatherCard.swift in Sources */,
+				44EF1AAA686BFC32538BF856 /* WeatherStore.swift in Sources */,
 				D23FAC1AE3C5CDB47A8564A3 /* WorkEditorView.swift in Sources */,
 				8EC24FE07493473D3648F07D /* WorkModels.swift in Sources */,
 				3D74E3C7714F58F8A5298FA7 /* WorkView.swift in Sources */,
@@ -467,6 +483,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = KeywordAlarm/KeywordAlarm.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = MWLL89NS74;
@@ -486,6 +503,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = KeywordAlarm/KeywordAlarm.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = MWLL89NS74;

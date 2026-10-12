@@ -20,12 +20,17 @@ targets:
       - path: KeywordAlarm
         excludes:
           - PrivacyInfo.xcprivacy
+          - KeywordAlarm.entitlements
       - path: KeywordAlarm/PrivacyInfo.xcprivacy
         buildPhase: resources   # 개인정보 매니페스트 (앱스토어 제출 필수)
+    entitlements:
+      path: KeywordAlarm/KeywordAlarm.entitlements
+      properties:
+        com.apple.developer.weatherkit: true
     info:
       path: KeywordAlarm/Info.plist
       properties:
-        CFBundleDisplayName: 키워드알람
+        CFBundleDisplayName: 인센콜
         CFBundleDevelopmentRegion: ko
         NSAlarmKitUsageDescription: 등록한 키워드가 담긴 문자가 오면 무음 모드에서도 알람을 울리기 위해 사용합니다.
         UILaunchScreen: {}

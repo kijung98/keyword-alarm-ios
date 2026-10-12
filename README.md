@@ -1,4 +1,4 @@
-# 키워드알람 (KeywordAlarm) — iOS
+# 인센콜 (KeywordAlarm) — iOS
 
 특정 문구가 담긴 **문자**가 오면 **무음·집중 모드에서도 시계 앱처럼 크게 울리는** 아이폰 앱입니다.
 야간 근무 후 낮에 자는 사람이 "추가지급", "긴급 호출" 같은 문자를 놓치지 않도록 만들었습니다.
@@ -14,7 +14,7 @@
 ```
 문자 도착
   ↓  아이폰 '단축어' 자동화 (메시지 수신 시, 즉시 실행)
-  ↓  키워드알람 › 문자 확인 후 알람 (문자 내용 = 단축어 입력)
+  ↓  인센콜 › 문자 확인 후 알람 (문자 내용 = 단축어 입력)
   ↓  키워드 · 시간대 · 요일 · 중복방지 판정
   ↓  AlarmKit 알람 예약 (2초 뒤) → 무음/집중 모드를 뚫고 울림
 ```
@@ -67,7 +67,7 @@ open KeywordAlarm.xcodeproj
    - 자동화 ②: 메시지에 다음 포함 `특별지급` (인천 17·39 신선센터 형식)
    - 두 자동화 모두 아래 4~5단계를 똑같이 설정
    - **즉시 실행** 선택 (실행 전 확인 ❌)
-4. 새로운 빈 단축어 › 동작 검색 `키워드알람` › **문자 확인 후 알람**
+4. 새로운 빈 단축어 › 동작 검색 `인센콜` › **문자 확인 후 알람**
 5. '문자 내용' 칸 → **단축어 입력** 선택 → 완료
 6. 다른 폰에서 키워드가 든 문자 전송 → 앱 **기록 탭**에 `알람 울림`이 남으면 성공
 
@@ -80,7 +80,7 @@ open KeywordAlarm.xcodeproj
 **터미널에서**
 ```bash
 cd KeywordAlarm
-git init && git add . && git commit -m "키워드알람 iOS 첫 버전"
+git init && git add . && git commit -m "인센콜 iOS 첫 버전"
 git branch -M main
 git remote add origin https://github.com/<아이디>/keyword-alarm-ios.git
 git push -u origin main

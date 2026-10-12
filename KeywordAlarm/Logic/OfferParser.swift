@@ -153,6 +153,9 @@ struct IncentiveOffer: Codable, Equatable, Identifiable {
             if let name = s.shiftName { when += " " + name }
             if let start = s.startTime { when += " " + start }
             if schedules.count > 1 { when += " 외 \(schedules.count - 1)" }
+            if let y = s.year, let m = s.month, let d = s.day, Holidays.isHoliday(DayKey(year: y, month: m, day: d)) {
+                when += " (휴일×1.5)"
+            }
             parts.append(when)
         }
         if let c = centerShort { parts.append(c) }
@@ -479,6 +482,11 @@ enum OfferRepository {
         var offers = load(defaults: defaults)
         offers.insert(offer, at: 0)
         if offers.count > maxCount { offers = Array(offers.prefix(maxCount)) }
+        if let data = try? JSONEncoder().encode(offers) { defaults.set(data, forKey: key) }
+    }
+
+    static func delete(id: UUID, defaults: UserDefaults = .standard) {
+        let offers = load(defaults: defaults).filter { $0.id != id }
         if let data = try? JSONEncoder().encode(offers) { defaults.set(data, forKey: key) }
     }
 

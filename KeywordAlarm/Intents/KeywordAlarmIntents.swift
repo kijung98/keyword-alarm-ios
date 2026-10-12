@@ -2,7 +2,7 @@ import AppIntents
 import Foundation
 
 /// 단축어 자동화에서 호출하는 핵심 동작.
-/// 자동화: [메시지 수신 시] → [키워드알람: 문자 확인 후 알람 (문자 내용 = 단축어 입력)]
+/// 자동화: [메시지 수신 시] → [인센콜: 문자 확인 후 알람 (문자 내용 = 단축어 입력)]
 struct CheckMessageIntent: AppIntent {
     static var title: LocalizedStringResource = "문자 확인 후 알람"
     static var description = IntentDescription("받은 문자에 등록한 키워드가 있으면 무음 모드에서도 큰 알람을 울립니다.")
@@ -33,7 +33,7 @@ struct TestAlarmIntent: AppIntent {
             try await AlarmService.fireTest()
             return .result(dialog: "5초 뒤 알람이 울립니다.")
         } catch {
-            return .result(dialog: "알람 권한이 없습니다. 키워드알람 앱을 열어 권한을 허용해 주세요.")
+            return .result(dialog: "알람 권한이 없습니다. 인센콜 앱을 열어 권한을 허용해 주세요.")
         }
     }
 }

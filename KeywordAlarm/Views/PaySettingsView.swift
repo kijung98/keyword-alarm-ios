@@ -8,6 +8,8 @@ struct PaySettingsView: View {
     @State private var newRuleName = "15일 근무 보너스"
     @State private var newRuleDays = 15
     @State private var newRuleAmount = 0
+    @State private var newCenter = ""
+    @State private var newGroupName = ""
 
     var body: some View {
         @Bindable var model = model
@@ -39,6 +41,55 @@ struct PaySettingsView: View {
                 }
 
                 Section {
+                    ForEach(model.paySettings.centerPresets, id: \.self) { c in
+                        Label(c, systemImage: "building.2")
+                    }
+                    .onDelete { model.paySettings.centerPresets.remove(atOffsets: $0) }
+                    HStack {
+                        TextField("예: 인천14", text: $newCenter)
+                        Button("추가") {
+                            let c = newCenter.trimmingCharacters(in: .whitespaces)
+                            if !c.isEmpty && !model.paySettings.centerPresets.contains(c) {
+                                model.paySettings.centerPresets.append(c)
+                            }
+                            newCenter = ""
+                        }
+                        .disabled(newCenter.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                } header: {
+                    Text("자주 가는 센터")
+                } footer: {
+                    Text("근무 입력에서 버튼으로 바로 선택됩니다. 홈 탭의 '내 센터'도 함께 표시돼요. 왼쪽으로 밀면 삭제.")
+                }
+
+                ForEach(model.paySettings.shiftGroups) { group in
+                    ShiftGroupSection(group: group)
+                }
+
+                Section {
+                    HStack {
+                        TextField("새 근무조 이름 (예: 새벽조)", text: $newGroupName)
+                        Button("추가") {
+                            let n = newGroupName.trimmingCharacters(in: .whitespaces)
+                            if !n.isEmpty && !model.paySettings.shiftGroups.contains(where: { $0.name == n }) {
+                                model.paySettings.shiftGroups.append(ShiftGroup(name: n))
+                            }
+                            newGroupName = ""
+                        }
+                        .disabled(newGroupName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                    Button("근무조·시간대 기본값으로 되돌리기") {
+                        model.paySettings.shiftGroups = ShiftGroup.defaults
+                        model.paySettings.shiftTimes = ShiftPreset.defaults
+                    }
+                    .font(.footnote)
+                } header: {
+                    Text("근무조 추가")
+                } footer: {
+                    Text("근무 입력에서 근무조를 고르면 그 근무조의 시간대 버튼이 나옵니다. 휴게시간 기본값은 근로기준법 기준 추정치(4시간 이상 30분, 8시간 이상 1시간)이니 실제와 다르면 고치세요.")
+                }
+
+                Section {
                     Picker("주휴 기준", selection: $model.paySettings.holidayRule) {
                         ForEach(HolidayPayRule.allCases) { Text($0.label).tag($0) }
                     }
@@ -51,6 +102,14 @@ struct PaySettingsView: View {
                 }
 
                 Section {
+                    Toggle("공휴일 근무 1.5배 적용", isOn: $model.paySettings.applyHolidayPremium)
+                } header: {
+                    Text("휴일근로 수당")
+                } footer: {
+                    Text("공휴일·대체공휴일·근로자의 날 근무는 8시간까지 1.5배, 8시간 초과분은 2배로 계산합니다 (5인 이상 사업장, 근로기준법 제56조). 자정을 넘기는 근무는 공휴일 날짜에 걸친 시간만 계산합니다.")
+                }
+
+                Section {
                     Toggle("공제 추정해서 실수령 표시", isOn: $model.paySettings.applyDeductions)
                     Stepper("4대보험 기준: 월 \(model.paySettings.insuranceMinDays)일",
                             value: $model.paySettings.insuranceMinDays, in: 1...31)
@@ -60,6 +119,25 @@ struct PaySettingsView: View {
                     Text("공제 (추정)")
                 } footer: {
                     Text("일용직은 고용보험 0.9%가 기본 공제됩니다. 월 8일(또는 60시간) 이상이면 국민연금 4.75%·건강보험 3.595%·장기요양(건강보험료의 13.14%)이 추가될 수 있습니다. 소득세는 (일급 − 15만원) × 2.7%, 1,000원 미만이면 0원입니다. 정확한 가입 여부는 4대사회보험 정보연계센터에서 확인하세요.")
+                }
+
+                Section {
+                    Button {
+                        let wage = Double(model.paySettings.defaultHourlyWage)
+                        let start = DayKey(Date()).weekStart()
+                        let amount = Int((8 * wage).rounded())
+                        let preview = WeekSummary(start: start, end: start.adding(days: 6),
+                                                  workDays: model.paySettings.holidayMinDays, regularHours: 40,
+                                                  averageWage: wage, qualifiesCompany: true, qualifiesLegal: true,
+                                                  companyHolidayPay: amount, legalHolidayPay: amount,
+                                                  appliedHolidayPay: amount, daysToCompanyRule: 0)
+                        dismiss()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { model.celebration = preview }
+                    } label: {
+                        Label("주휴수당 축하 화면 미리보기", systemImage: "party.popper")
+                    }
+                } footer: {
+                    Text("한 주(일~토)에 \(model.paySettings.holidayMinDays)번째 근무를 저장하는 순간 이 화면이 자동으로 나옵니다.")
                 }
 
                 Section("이번 달 목표") {
@@ -112,6 +190,74 @@ struct PaySettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("완료") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func minuteBinding(_ minutes: Binding<Int>) -> Binding<Date> {
+        Binding<Date>(
+            get: {
+                Calendar.current.date(bySettingHour: minutes.wrappedValue / 60, minute: minutes.wrappedValue % 60,
+                                      second: 0, of: Date()) ?? Date()
+            },
+            set: { date in
+                let c = Calendar.current.dateComponents([.hour, .minute], from: date)
+                minutes.wrappedValue = (c.hour ?? 0) * 60 + (c.minute ?? 0)
+            }
+        )
+    }
+}
+
+/// 근무조 하나의 시간대 목록 (추가·수정·삭제)
+private struct ShiftGroupSection: View {
+    @Environment(AppModel.self) private var model
+    let group: ShiftGroup
+
+    var body: some View {
+        @Bindable var model = model
+        let indices = model.paySettings.shiftTimes.indices.filter { model.paySettings.shiftTimes[$0].group == group.name }
+
+        Section {
+            ForEach(indices, id: \.self) { i in
+                HStack {
+                    DatePicker("", selection: minuteBinding($model.paySettings.shiftTimes[i].startMinute),
+                               displayedComponents: .hourAndMinute).labelsHidden()
+                    Text("~")
+                    DatePicker("", selection: minuteBinding($model.paySettings.shiftTimes[i].endMinute),
+                               displayedComponents: .hourAndMinute).labelsHidden()
+                    Spacer()
+                    Menu {
+                        ForEach([0, 30, 60, 90], id: \.self) { m in
+                            Button("휴게 \(m)분") { model.paySettings.shiftTimes[i].breakMinutes = m }
+                        }
+                    } label: {
+                        Text("휴게 \(model.paySettings.shiftTimes[i].breakMinutes)분").font(.caption)
+                    }
+                }
+            }
+            .onDelete { offsets in
+                let ids = offsets.map { model.paySettings.shiftTimes[indices[$0]].id }
+                model.paySettings.shiftTimes.removeAll { ids.contains($0.id) }
+            }
+            Button {
+                let last = indices.last.map { model.paySettings.shiftTimes[$0] }
+                model.paySettings.shiftTimes.append(ShiftPreset(group: group.name,
+                                                                start: last?.startMinute ?? 9 * 60,
+                                                                end: last?.endMinute ?? 18 * 60))
+            } label: {
+                Label("시간대 추가", systemImage: "plus.circle")
+            }
+        } header: {
+            HStack {
+                Text(group.label)
+                Spacer()
+                if !ShiftGroup.defaults.contains(group) {
+                    Button("근무조 삭제", role: .destructive) {
+                        model.paySettings.shiftGroups.removeAll { $0 == group }
+                        model.paySettings.shiftTimes.removeAll { $0.group == group.name }
+                    }
+                    .font(.caption)
                 }
             }
         }

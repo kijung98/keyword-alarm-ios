@@ -52,13 +52,11 @@ struct HomeView: View {
                 // 상태 카드
                 Section {
                     HStack(spacing: 16) {
-                        Image(systemName: model.settings.isEnabled ? "alarm.waves.left.and.right.fill" : "alarm")
-                            .font(.system(size: 40, weight: .semibold))
-                            .foregroundStyle(model.settings.isEnabled ? .blue : .secondary)
-                            .frame(width: 56)
+                        RadarView(mode: radarMode, blips: todayAlarmCount)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(model.settings.isEnabled ? "감시 중" : "꺼짐")
+                            Text(radarMode == .active ? "감시 중" : (radarMode == .standby ? "대기 중" : "꺼짐"))
                                 .font(.title2.bold())
+                                .contentTransition(.opacity)
                             Text(statusSubtitle)
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
@@ -68,6 +66,12 @@ struct HomeView: View {
                             .labelsHidden()
                     }
                     .padding(.vertical, 8)
+                }
+
+                // 날씨 (출퇴근 우산 준비)
+                Section("날씨") {
+                    WeatherCard()
+                        .padding(.vertical, 4)
                 }
 
                 // 최근 인센티브
@@ -184,8 +188,19 @@ struct HomeView: View {
                     Text("같은 내용(센터·날짜·금액)의 문자가 이 시간 안에 또 오면 다시 울리지 않습니다. 다른 센터·다른 날짜 인센티브는 바로 울립니다. 기본 제목은 문자에서 정보를 못 읽었을 때 쓰입니다.")
                 }
             }
-            .navigationTitle("키워드알람")
+            .navigationTitle("인센콜")
         }
+    }
+
+    /// 감시 켜짐 + 감시 시간 안 → 감시 중 / 켜졌지만 시간 밖 → 대기 중 / 꺼짐
+    private var radarMode: RadarView.Mode {
+        guard model.settings.isEnabled else { return .off }
+        return TimeWindow.isActive(Date(), settings: model.settings) ? .active : .standby
+    }
+
+    /// 오늘 울린 알람 수 → 레이더의 금색 점
+    private var todayAlarmCount: Int {
+        model.history.filter { $0.result == .fired && Calendar.current.isDateInToday($0.date) }.count
     }
 
     private var statusSubtitle: String {

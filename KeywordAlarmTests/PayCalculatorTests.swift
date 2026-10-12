@@ -92,14 +92,15 @@ final class PayCalculatorTests: XCTestCase {
         XCTAssertEqual(m.workDays, 8)
         XCTAssertEqual(m.base, 660_480)
         XCTAssertEqual(m.holidayPay, 82_560)          // 10/4 주만 5일
-        XCTAssertEqual(m.gross, 743_040)
+        XCTAssertEqual(m.holidayWork, 41_280)         // 10/5 대체공휴일 근무 1.5배
+        XCTAssertEqual(m.gross, 784_320)
         XCTAssertTrue(m.insuranceLikely)
-        XCTAssertEqual(m.deductions.employment, 6_680)
-        XCTAssertEqual(m.deductions.pension, 35_290)
-        XCTAssertEqual(m.deductions.health, 26_710)
-        XCTAssertEqual(m.deductions.longTermCare, 3_500)
+        XCTAssertEqual(m.deductions.employment, 7_050)
+        XCTAssertEqual(m.deductions.pension, 37_250)
+        XCTAssertEqual(m.deductions.health, 28_190)
+        XCTAssertEqual(m.deductions.longTermCare, 3_700)
         XCTAssertEqual(m.deductions.incomeTax, 0)
-        XCTAssertEqual(m.net, 670_860)
+        XCTAssertEqual(m.net, 708_130)
     }
 
     func testMonthBelowInsuranceThreshold() {
@@ -125,5 +126,32 @@ final class PayCalculatorTests: XCTestCase {
         XCTAssertEqual(PayCalculator.shortWon(125_904), "12.6만")
         XCTAssertEqual(PayCalculator.shortWon(80_000), "8만")
         XCTAssertEqual(PayCalculator.shortWon(1_250_000), "125만")
+    }
+
+    // MARK: 공휴일
+
+    func testHolidayDayShiftIsOnePointFive() {
+        let p = PayCalculator.dayPay(record(10, 9))           // 한글날 08:00~17:00
+        XCTAssertEqual(p.holidayWork, 41_280)                 // 8 × 10,320 × 0.5
+        XCTAssertEqual(p.total, 123_840)                      // 1.5배
+        XCTAssertEqual(PayCalculator.dayPay(record(10, 9), holidayPremium: false).holidayWork, 0)
+    }
+
+    func testNightShiftIntoHoliday() {
+        let p = PayCalculator.dayPay(record(10, 8, start: 18 * 60, end: 4 * 60))   // 10/8 18시 → 한글날 04시
+        XCTAssertEqual(p.holidayHours, 3.6, accuracy: 0.001)  // 공휴일 4시간 × 휴게비율 0.9
+        XCTAssertEqual(p.holidayWork, 18_576)
+    }
+
+    func testHolidayOffSwitchPerDay() {
+        var r = record(10, 9)
+        r.holidayPremiumOff = true
+        XCTAssertEqual(PayCalculator.dayPay(r).holidayWork, 0)
+    }
+
+    func testHolidays2026() {
+        XCTAssertEqual(Holidays.name(of: DayKey(year: 2026, month: 10, day: 5)), "대체공휴일")   // 개천절 대체
+        XCTAssertEqual(Holidays.name(of: DayKey(year: 2026, month: 7, day: 17)), "제헌절")       // 2026 복원
+        XCTAssertNil(Holidays.name(of: DayKey(year: 2026, month: 10, day: 12)))
     }
 }
